@@ -1,4 +1,3 @@
-# Computer Graphics
+# Video demostración
 
-and stuff
-
+https://youtu.be/p8bPICtOSZ8
