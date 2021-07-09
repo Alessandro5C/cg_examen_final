@@ -17,7 +17,11 @@ void processInput(GLFWwindow* window) {
 	f32 temp = cam->speed;
 	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
 		cam->speed *=2;
-	//Make your movements
+	//Shot to asterioids with space 
+	//if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		//cam->speed *=2;
+
+	//Use arrow keys to move
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 		cam->processKeyboard(UP, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
@@ -62,6 +66,7 @@ void scroll_callback(GLFWwindow*, f64, f64 yoffset) {
 }
 
 i32 main() {
+	srand(time(NULL));
 	GLFWwindow* window = glutilInit(3, 3, SCR_WIDTH, SCR_HEIGHT, "Cubito");
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
@@ -77,6 +82,10 @@ i32 main() {
 	Model*  planet = new Model(files, "planet/planet.obj");
 	Model*  rock = new Model(files, "rock/rock.obj");
 
+	i32 limit_sup_x = 15, limit_inf_x = 0,
+		limit_sup_y = 2, limit_inf_y = -2,
+		limit_sup_z = 0, limit_inf_z = -25;
+
 	u32 amount = 100;
 	glm::mat4* models = new glm::mat4[amount];
 	srand(glfwGetTime());
@@ -84,8 +93,12 @@ i32 main() {
 	f32 offset = 2.f;
 	for (u32 i = 0; i < amount; ++i) {
 		glm::mat4 model = glm::mat4(1.0f);
-		f32 x = rand() % 15, y = rand() % 5 - 2, z = rand() % 15 + 10;
+		f32 x = rand() % limit_sup_x,
+			y = rand() % (limit_sup_y-limit_inf_y+1) - 2,
+			z = rand() % (-limit_inf_z) + 10;
+
 		model = glm::translate(model, {x*offset, y*offset, -z*offset});
+		model = glm::scale(model, glm::vec3(0.5));
 
 		/*
 		f32 angle = (f32)i / (f32)amount * 360.0f;
@@ -132,15 +145,19 @@ i32 main() {
 		glBindVertexArray(0);
 	}
 
-	glm::vec3 lightPos   = glm::vec3(1.0f);
-	glm::vec3 lightColor = glm::vec3(1.0f);
+	glm::vec3 lightPos   = glm::vec3(8.0f, 0.f, -1.f);
+	glm::vec3 lightColor = glm::vec3(1.0f, 0.f,  0.f);
 
 	glEnable(GL_DEPTH_TEST);
 
+	srand(time(NULL));
+	float dx=(rand()%10+1)/10.f, dy=(rand()%10+1)/10.f, dz=-(rand()%10+1)/10.f;;
 	while (!glfwWindowShouldClose(window)) {
 		f32 currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+
+
 
 		processInput(window);
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -149,8 +166,22 @@ i32 main() {
 		glPolygonMode(GL_FRONT_AND_BACK, wireframe? GL_LINE: GL_FILL);
 
 		shader->use();
-		lightPos.x = 2.0f*(cos(currentFrame) - sin(currentFrame));
-		lightPos.z = 2.0f*(cos(currentFrame) + sin(currentFrame));
+
+		//Check limit WALLS
+		if (lightPos.x+dx> limit_sup_x *offset || lightPos.x+dx < limit_inf_x *offset)
+			dx *= -1.f;
+		if (lightPos.y+dy> limit_sup_y *offset || lightPos.y+dy < limit_inf_y *offset)
+			dy *= -1.f;
+		if (lightPos.z+dz> limit_sup_z *offset || lightPos.z+dz < limit_inf_z *offset)
+			dz *= -1.f;
+
+		f32 light_speed = 9.0f;
+		lightPos.x += dx * deltaTime*light_speed;
+		lightPos.y += dy * deltaTime*light_speed;
+		lightPos.z += dz * deltaTime*light_speed;
+
+		//std::cout << dx << dy << dz << std::endl;
+
 		shader->setVec3("xyz", lightPos);
 		shader->setVec3("xyzColor", lightColor);
 		shader->setVec3("xyzView", cam->pos);
@@ -159,7 +190,7 @@ i32 main() {
 		shader->setMat4("view", cam->getViewM4());
 
 		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(lightPos.x, lightPos.y, lightPos.z));
 		//f32 scale = (rand() % 10) / 100.0f + 0.05;
 		model = glm::scale(model, glm::vec3(0.05));
 		shader->setMat4("model", model);
